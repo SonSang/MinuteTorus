@@ -1,0 +1,3 @@
+[submodule "MinuteUtils"]
+	path = MinuteUtils
+	url = https://github.com/SonSang/MinuteUtils.git
