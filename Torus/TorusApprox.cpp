@@ -9,6 +9,9 @@
 #include "TorusApprox.h"
 #include "../Circle/Circle.h"
 
+#define NR_MAX_ITER		20
+#define LUDCMP_EPS		1.0e-20
+
 namespace MN {
 	// TorusApprox Mapping
 	void TorusApprox::Mapping::set(const SurfaceInfo& surface, const TorusApprox& torus, Real m, Real n) {
@@ -16,6 +19,8 @@ namespace MN {
 		Real v = surface.v;
 		m0 = m;
 		n0 = n;
+		uDomain = surface.uDomain;
+		vDomain = surface.vDomain;
 
 		Vec3 Fuu, Fuv, Fvv, Gmm, Gmn, Gnn, Fu, Fv, Gm, Gn;
 		Fuu = surface.Fuu;
@@ -62,6 +67,7 @@ namespace MN {
 			nCoefs[5] = n - nCoefs[0] * u * u - nCoefs[1] * v * v - nCoefs[2] * u * v - nCoefs[3] * u - nCoefs[4] * v;
 		}
 
+		/*
 		// U, V Coefs
 		{
 			Real
@@ -115,15 +121,152 @@ namespace MN {
 			// C6
 			uCoefs[5] = u - uCoefs[0] * m * m - uCoefs[1] * n * n - uCoefs[2] * m * n - uCoefs[3] * m - uCoefs[4] * n;
 			vCoefs[5] = v - vCoefs[0] * m * m - vCoefs[1] * n * n - vCoefs[2] * m * n - vCoefs[3] * m - vCoefs[4] * n;
-		}
+		}*/
 	}
 	void TorusApprox::Mapping::calMN(Real u, Real v, Real& m, Real& n) const {
 		m = evaluate(mCoefs, u, v);
 		n = evaluate(nCoefs, u, v);
 	}
-	void TorusApprox::Mapping::calUV(Real m, Real n, Real& u, Real& v) const {
-		u = evaluate(uCoefs, m, n);
-		v = evaluate(vCoefs, m, n);
+
+	inline static void ludcmp(Real a[3][3], int* idx, Real* d) {
+		int i, imax, j, k;
+		Real big, dum, sum, temp;
+		Real vv[3];
+
+		*d = 1.0;
+		for (i = 1; i <= 2; i++) {
+			big = 0.0;
+			for (j = 1; j <= 2; j++)
+				if ((temp = fabs(a[i][j])) > big) big = temp;
+			if (big == 0.0)
+				throw(std::runtime_error("Singular matrix in routine ludcmp"));
+			vv[i] = 1.0 / big;
+		}
+		for (j = 1; j <= 2; j++) {
+			for (i = 1; i < j; i++) {
+				sum = a[i][j];
+				for (k = 1; k < i; k++) sum -= a[i][k] * a[k][j];
+				a[i][j] = sum;
+			}
+			big = 0.0;
+			for (i = j; i <= 2; i++) {
+				sum = a[i][j];
+				for (k = 1; k < j; k++)
+					sum -= a[i][k] * a[k][j];
+				a[i][j] = sum;
+				if ((dum = vv[i] * fabs(sum)) >= big) {
+					big = dum;
+					imax = i;
+				}
+			}
+			if (j != imax) {
+				for (k = 1; k <= 2; k++) {
+					dum = a[imax][k];
+					a[imax][k] = a[j][k];
+					a[j][k] = dum;
+				}
+				*d = -(*d);
+				vv[imax] = vv[j];
+			}
+			idx[j] = imax;
+			if (a[j][j] == 0.0)
+				a[j][j] = LUDCMP_EPS;
+			if (j != 2) {
+				dum = 1.0 / (a[j][j]);
+				for (i = j + 1; i <= 2; i++) a[i][j] *= dum;
+			}
+		}
+	}
+	inline static void lubksb(Real a[3][3], int* idx, Real b[]) {
+		int i, ii = 0, ip, j;
+		Real sum;
+
+		for (i = 1; i <= 2; i++) {
+			ip = idx[i];
+			sum = b[ip];
+			b[ip] = b[i];
+			if (ii)
+				for (j = ii; j <= i - 1; j++) sum -= a[i][j] * b[j];
+			else if (sum) ii = i;
+			b[i] = sum;
+		}
+		for (i = 2; i >= 1; i--) {
+			sum = b[i];
+			for (j = i + 1; j <= 2; j++) sum -= a[i][j] * b[j];
+			b[i] = sum / a[i][i];
+		}
+	}
+	inline static void calUVnrFunc(const TorusApprox::Mapping& mapping, Real param[3], Real m, Real n, Real dvec[3], Real djac[3][3]) {
+		Real u = param[1], v = param[2];
+		Real m0, n0;
+		mapping.calMN(u, v, m0, n0);
+
+		// 1. dvec
+		dvec[1] = m0 - m;
+		dvec[2] = n0 - n;
+
+		// 2. djac
+		djac[1][1] = 2 * mapping.mCoefs[0] * u + mapping.mCoefs[2] * v + mapping.mCoefs[3];
+		djac[1][2] = 2 * mapping.mCoefs[1] * v + mapping.mCoefs[2] * u + mapping.mCoefs[4];
+		djac[2][1] = 2 * mapping.nCoefs[0] * u + mapping.nCoefs[2] * v + mapping.nCoefs[3];
+		djac[2][2] = 2 * mapping.nCoefs[1] * v + mapping.nCoefs[2] * u + mapping.nCoefs[4];
+	}
+	inline static bool calUVnr(const TorusApprox::Mapping& mapping, const Domain& uDomain, const Domain& vDomain, Real param[3], Real m, Real n, Real eps) {
+		int k, i, indx[3];
+		Real errx, errf, d, dvec[3], djac[3][3], p[3], prev = maxDouble;
+
+		// First, adjust [ m, n ] to good values that locate near to initial [ m0, n0 ]
+		Real m0, n0;
+		mapping.calMN(param[1], param[2], m0, n0);
+		while (fabs(m - m0) > PI) {
+			if (m > m0) m -= PI20;
+			else m += PI20;
+		}
+		while (fabs(n - n0) > PI) {
+			if (n > n0) n -= PI20;
+			else n += PI20;
+		}
+
+		for (k = 0; k < NR_MAX_ITER; k++) {
+			// User function supplies function values at [x] in [dvec] and Jacobian matrix in [djac].
+			calUVnrFunc(mapping, param, m, n, dvec, djac);
+
+			errf = 0.0;
+			for (i = 1; i <= 2; i++)
+				errf += fabs(dvec[i]);			// Check function convergence.
+			if (errf <= eps)
+				return true;
+			if (errf >= prev)
+				return false;
+			prev = errf;
+
+			for (i = 1; i <= 2; i++)
+				p[i] = -dvec[i];										// Right-hand side of linear equations.
+			ludcmp(djac, indx, &d);								// Solve linear equations using LU decomposition.
+			lubksb(djac, indx, p);
+			errx = 0.0;
+			for (i = 1; i <= 2; i++) {									// Check root convergence.
+				errx += fabs(p[i]);										// Update solution.
+				param[i] += p[i];
+			}
+			if (param[1] < uDomain.beg())
+				param[1] = uDomain.beg();
+			else if (param[1] > uDomain.end())
+				param[1] = uDomain.end();
+
+			if (param[2] < vDomain.beg())
+				param[2] = vDomain.beg();
+			else if (param[2] > vDomain.end())
+				param[2] = vDomain.end();
+		}
+		return false;
+	}
+	bool TorusApprox::Mapping::calUV(Real m, Real n, Real& u, Real& v, Real eps) const {
+		Real param[3] = { 0, uDomain.middle(), vDomain.middle() };
+		bool result = calUVnr(*this, uDomain, vDomain, param, m, n, eps);
+		u = param[1];
+		v = param[2];
+		return result;
 	}
 	Real TorusApprox::Mapping::evaluate(const std::array<Real, 6>& c, Real u, Real v) {
 		return c[0] * u * u + c[1] * v * v + c[2] * u * v + c[3] * u + c[4] * v + c[5];
@@ -135,7 +278,93 @@ namespace MN {
 		domain.set(beg, end);
 	}
 
-	bool TorusApprox::Mapping::calDomainM(const Domain& uDomain, const Domain& vDomain, piDomain& mDomain) {
+	// Find min, max value of given quadratic fnction (c[0] + c[1] * x + c[2] * x^2) in given domain
+	static void quadraticFuncMinMax(const Real coef[3], const Domain& domain, Real& min, Real& max) {
+		const static Real eps = 1e-15;
+		Real t0 = coef[0] + coef[1] * domain.beg() + coef[2] * SQ(domain.beg());
+		Real t1 = coef[0] + coef[1] * domain.end() + coef[2] * SQ(domain.end());
+		Real x0 = -coef[1] / (2.0 * coef[2]);	// Param where derivative becomes zero
+		if (fabs(coef[2]) < eps || !domain.has(x0)) {
+			min = (t0 < t1 ? t0 : t1);
+			max = (t0 > t1 ? t0 : t1);
+		}
+		else {
+			if (coef[2] > 0) {
+				min = coef[0] + coef[1] * x0 + coef[2] * SQ(x0);
+				max = (t0 > t1 ? t0 : t1);
+			}
+			else {
+				max = (t0 > t1 ? t0 : t1);
+				min = coef[0] + coef[1] * x0 + coef[2] * SQ(x0);
+			}
+		}
+	}
+	void TorusApprox::Mapping::calDomainM(const Domain& uDomain, const Domain& vDomain, piDomain& mDomain) {
+		Real min = maxDouble, max = minDouble;
+		Real tmin, tmax;
+		Real coef[3];
+		// 1. u == ubeg && u == uend case
+		{
+			// u == ubeg
+			Real u = uDomain.beg();
+			coef[0] = mCoefs[0] * SQ(u) + mCoefs[3] * u + mCoefs[5];
+			coef[1] = mCoefs[2] * u + mCoefs[4];
+			coef[2] = mCoefs[1];
+			quadraticFuncMinMax(coef, vDomain, tmin, tmax);
+			if (tmin < min) min = tmin;
+			if (tmax > max) max = tmax;
+
+			// u == uend
+			u = uDomain.end();
+			coef[0] = mCoefs[0] * SQ(u) + mCoefs[3] * u + mCoefs[5];
+			coef[1] = mCoefs[2] * u + mCoefs[4];
+			coef[2] = mCoefs[1];
+			quadraticFuncMinMax(coef, vDomain, tmin, tmax);
+			if (tmin < min) min = tmin;
+			if (tmax > max) max = tmax;
+		}
+
+		// 2. v == vbeg && v == vend case
+		{
+			// v == vbeg
+			Real v = vDomain.beg();
+			coef[0] = mCoefs[1] * SQ(v) + mCoefs[4] * v + mCoefs[5];
+			coef[1] = mCoefs[2] * v + mCoefs[3];
+			coef[2] = mCoefs[0];
+			quadraticFuncMinMax(coef, uDomain, tmin, tmax);
+			if (tmin < min) min = tmin;
+			if (tmax > max) max = tmax;
+
+			// v == vend
+			v = vDomain.end();
+			coef[0] = mCoefs[1] * SQ(v) + mCoefs[4] * v + mCoefs[5];
+			coef[1] = mCoefs[2] * v + mCoefs[3];
+			coef[2] = mCoefs[0];
+			quadraticFuncMinMax(coef, uDomain, tmin, tmax);
+			if (tmin < min) min = tmin;
+			if (tmax > max) max = tmax;
+		}
+
+		// 3. Derivative 0 cases
+		{
+			const static Real eps = 1e-15;
+			Real det = 4.0 * mCoefs[0] * mCoefs[1] - SQ(mCoefs[2]);
+			if (det > eps) {
+				Real u0 = (mCoefs[2] * mCoefs[4] - 2.0 * mCoefs[1] * mCoefs[3]) / det;
+				Real v0 = (mCoefs[2] * mCoefs[3] - 2.0 * mCoefs[0] * mCoefs[4]) / det;
+				if (uDomain.has(u0) && vDomain.has(v0)) {
+					Real m0 = evaluate(mCoefs, u0, v0);
+					if (m0 < min) min = m0;
+					if (m0 > max) max = m0;
+				}
+			}
+		}
+		if (max - min > PI20)
+			mDomain.set(0, PI20);
+		else
+			mDomain.set(min, max);
+
+		/*
 		// Check [ Mu ]
 		bool posMu;
 		Real Mu00 = 2 * mCoefs[0] * uDomain.beg() + mCoefs[2] * vDomain.beg() + mCoefs[3];
@@ -260,8 +489,73 @@ namespace MN {
 		else
 			mDomain.set(0, PI20);
 		return true;
+		*/
 	}
-	bool TorusApprox::Mapping::calDomainN(const Domain& uDomain, const Domain& vDomain, piDomain& nDomain) {
+	void TorusApprox::Mapping::calDomainN(const Domain& uDomain, const Domain& vDomain, piDomain& nDomain) {
+		Real min = maxDouble, max = minDouble;
+		Real tmin, tmax;
+		Real coef[3];
+		// 1. u == ubeg && u == uend case
+		{
+			// u == ubeg
+			Real u = uDomain.beg();
+			coef[0] = nCoefs[0] * SQ(u) + nCoefs[3] * u + nCoefs[5];
+			coef[1] = nCoefs[2] * u + nCoefs[4];
+			coef[2] = nCoefs[1];
+			quadraticFuncMinMax(coef, vDomain, tmin, tmax);
+			if (tmin < min) min = tmin;
+			if (tmax > max) max = tmax;
+
+			// u == uend
+			u = uDomain.end();
+			coef[0] = nCoefs[0] * SQ(u) + nCoefs[3] * u + nCoefs[5];
+			coef[1] = nCoefs[2] * u + nCoefs[4];
+			coef[2] = nCoefs[1];
+			quadraticFuncMinMax(coef, vDomain, tmin, tmax);
+			if (tmin < min) min = tmin;
+			if (tmax > max) max = tmax;
+		}
+
+		// 2. v == vbeg && v == vend case
+		{
+			// v == vbeg
+			Real v = vDomain.beg();
+			coef[0] = nCoefs[1] * SQ(v) + nCoefs[4] * v + nCoefs[5];
+			coef[1] = nCoefs[2] * v + nCoefs[3];
+			coef[2] = nCoefs[0];
+			quadraticFuncMinMax(coef, uDomain, tmin, tmax);
+			if (tmin < min) min = tmin;
+			if (tmax > max) max = tmax;
+
+			// v == vend
+			v = vDomain.end();
+			coef[0] = nCoefs[1] * SQ(v) + nCoefs[4] * v + nCoefs[5];
+			coef[1] = nCoefs[2] * v + nCoefs[3];
+			coef[2] = nCoefs[0];
+			quadraticFuncMinMax(coef, uDomain, tmin, tmax);
+			if (tmin < min) min = tmin;
+			if (tmax > max) max = tmax;
+		}
+
+		// 3. Derivative 0 cases
+		{
+			const static Real eps = 1e-15;
+			Real det = 4.0 * nCoefs[0] * nCoefs[1] - SQ(nCoefs[2]);
+			if (det > eps) {
+				Real u0 = (nCoefs[2] * nCoefs[4] - 2.0 * nCoefs[1] * nCoefs[3]) / det;
+				Real v0 = (nCoefs[2] * nCoefs[3] - 2.0 * nCoefs[0] * nCoefs[4]) / det;
+				if (uDomain.has(u0) && vDomain.has(v0)) {
+					Real m0 = evaluate(nCoefs, u0, v0);
+					if (m0 < min) min = m0;
+					if (m0 > max) max = m0;
+				}
+			}
+		}
+		if (max - min > PI20)
+			nDomain.set(0, PI20);
+		else
+			nDomain.set(min, max);
+		/*
 		// Check [ Nu ]
 		bool posNu;
 		Real Nu00 = 2 * nCoefs[0] * uDomain.beg() + nCoefs[2] * vDomain.beg() + nCoefs[3];
@@ -386,6 +680,7 @@ namespace MN {
 		else
 			nDomain.set(0, PI20);
 		return true;
+		*/
 	}
 
 	/*Domain TorusApprox::Mapping::calDomain(int mn, const Domain& uDomain, const Domain& vDomain) {
@@ -530,8 +825,19 @@ namespace MN {
 		Real Gmmm, Gmmn, Gmnn, Gnnn, Gmm, Gmn, Gnn;
 		piDomain mDomain = patch.uDomain, nDomain = patch.vDomain;
 		{
+			Real nCosMin, nCosMax, nSinMin, nSinMax;
+			nDomain.minmaxCos(nCosMin, nCosMax);
+			nDomain.minmaxSin(nSinMin, nSinMax);
+
+			Real absSinNMax = (fabs(nSinMin) > fabs(nSinMax) ? fabs(nSinMin) : fabs(nSinMax));
+			Real absCosNMax = (fabs(nCosMin) > fabs(nCosMax) ? fabs(nCosMin) : fabs(nCosMax));
+
+			Gmmm = patch.majorRadius + patch.minorRadius * nCosMax;
+			Gmmn = patch.minorRadius * absSinNMax;
+			Gmnn = patch.minorRadius * absCosNMax;
+			Gnnn = patch.minorRadius;
 			// @TODO : Width assumption
-			if (n0 == 0) {
+			/*if (n0 == 0) {
 				Gmmm = patch.majorRadius + patch.minorRadius;
 				if (nDomain.width() > PI)
 					Gmmn = patch.minorRadius;
@@ -548,7 +854,7 @@ namespace MN {
 					Gmmn = patch.minorRadius * fabs(sin(nDomain.end()));
 				Gmnn = patch.minorRadius;
 				Gnnn = patch.minorRadius;
-			}
+			}*/
 			Gmm = Gmmm;
 			Gmn = Gmmn;
 			Gnn = Gnnn;
@@ -623,6 +929,10 @@ namespace MN {
 					w2 = Fu;
 				}
 			}
+			else if (fabs(a12) < eps) {
+				w1 = Fv + Fu * ((-k1 - a22) / a21);
+				w2 = Fv + Fu * ((-k2 - a22) / a21);
+			}
 			else {
 				w1 = Fu + Fv * ((-k1 - a11) / a12);
 				w2 = Fu + Fv * ((-k2 - a11) / a12);
@@ -640,7 +950,7 @@ namespace MN {
 		/*if (k1 == 0 || k2 == 0)
 			throw(std::runtime_error("Curvature zero"));*/
 
-		// Map surface(u, v) to proper torus parameters
+			// Map surface(u, v) to proper torus parameters
 		Real m, n;
 		if (k1 * k2 < 0) { // hyperbolic
 			m = 0;
@@ -667,7 +977,7 @@ namespace MN {
 		torusCenter = point + torusCenterAdd;
 
 		ta.patch.majorRadius = -1.0 / k1 + 1.0 / k2,
-		ta.patch.minorRadius = 1.0 / fabs(k2);
+			ta.patch.minorRadius = 1.0 / fabs(k2);
 		ta.setTransform(torusCenter, torusAxis);
 
 		// Rotate to make [point] correspond to (0, 0) or (0, PI)
@@ -697,7 +1007,11 @@ namespace MN {
 		// Set Torus Patch Domain
 		{
 			piDomain mDomain, nDomain;
-			bool validM = ta.mapping.calDomainM(surface.uDomain, surface.vDomain, mDomain);
+			ta.mapping.calDomainM(surface.uDomain, surface.vDomain, mDomain);
+			ta.mapping.calDomainN(surface.uDomain, surface.vDomain, nDomain);
+			ta.patch.uDomain = mDomain;
+			ta.patch.vDomain = nDomain;
+			/*bool validM = ta.mapping.calDomainM(surface.uDomain, surface.vDomain, mDomain);
 			bool validN = ta.mapping.calDomainN(surface.uDomain, surface.vDomain, nDomain);
 			if (validM && validN) {
 				ta.patch.uDomain = mDomain;
@@ -708,7 +1022,7 @@ namespace MN {
 				ta.patch.uDomain.set(0, PI20);
 				ta.patch.vDomain.set(0, PI20);
 				ta.validPatchDomain = false;
-			}
+			}*/
 		}
 
 		// Set Error Bound
@@ -724,7 +1038,8 @@ namespace MN {
 		M4 = surface.M4;
 
 		ta.mapping.calPositionErrorUpperBound(ta.patch, surface.uDomain, surface.vDomain, N1, N2, N3, N4);
-		ta.positionError = (2.0 / 3.0) * ((L1 * L1 * L1) * (M1 + N1) + 3 * (L1 * L1 * L2) * (M2 + N2) + 3 * (L1 * L2 * L2) * (M3 + N3) + (L2 * L2 * L2) * (M4 + N4));
+		ta.pErrorT = (2.0 / 3.0) * ((L1 * L1 * L1) * (M1 + N1) + 3 * (L1 * L1 * L2) * (M2 + N2) + 3 * (L1 * L2 * L2) * (M3 + N3) + (L2 * L2 * L2) * (M4 + N4));
+		ta.pErrorS = ta.pErrorT;
 		return ta;
 	}
 	TorusApprox::Ptr TorusApprox::createPtr(const SurfaceInfo& surface) {
@@ -754,5 +1069,24 @@ namespace MN {
 		Vec3 axisEnd;
 		axisEnd = center + axisHelper;
 		transform.rotate(center, axisEnd, radian);
+	}
+	void TorusApprox::setPositionErrorBySampling(const std::vector<SamplePoint>& samplePoints, Real multiplier) {
+		Real u, v, m, n;
+		Real maxd = 0, d;
+		Vec3 surfacePoint, torusPoint;
+		for (const auto& sample : samplePoints) {
+			u = sample.u;
+			v = sample.v;
+			surfacePoint = iTransform.apply(sample.point);
+
+			mapping.calMN(u, v, m, n);
+			torusPoint = patch.evaluate(m, n);
+			d = torusPoint.distsq(surfacePoint);
+			if (d > maxd)
+				maxd = d;
+		}
+		pErrorS = sqrt(maxd) * multiplier;
+		if (pErrorS > pErrorT)
+			pErrorS = pErrorT;
 	}
 }
