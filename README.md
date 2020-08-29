@@ -18,3 +18,5 @@ Circles play important roles in geometric computations related to tori : they of
 </p>
 
 # Torus
+Torus can be used to approximate freeform surfaces much precisely than other geometric entities. When it comes to surface or volume of revolution, approximation power of torus is maximized. This library offers algorithm to **approximate freeform surfaces with toroidal patches**. Also, it offers an efficient algorithm to **find binormal lines between those toroidal patches** - this algorithm is built upon the algorithm that finds binormal lines between circles. 
+
