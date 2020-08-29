@@ -36,5 +36,8 @@ Torus can be used to approximate freeform surfaces much precisely than other geo
 </p>
 
 ## Gaussmap
-Computing binormals between tori can be accelerated by using their gaussmaps. This library currently offers some limited functions about this gaussmap computation.
+Computing binormals between tori can be accelerated by using their **gaussmaps**. This library currently offers some limited functions about this gaussmap computation.
 
+<p align="center">
+  <img src="Image/gaussmap.gif">
+</p>
