@@ -13,4 +13,8 @@ Please refer to following papers to learn about details of this library :
 # Circle
 Circles play important roles in geometric computations related to tori : they offer efficient algorithm to find local extremums of distance between different tori. Therefore, this library offers algorithms to find **binormals - line that passes through two geometric entities orthogonally at the same time -** between two circles in 3D space. Also, it offers an algorithm to find **minimum distance** between two circles in 3D space, which is much faster than finding every binormal, as minimum distance is just the shortest binormal.
 
+<p align="center">
+  <img src="Image/Circle.png">
+</p>
+
 # Torus
