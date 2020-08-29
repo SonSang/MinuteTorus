@@ -8,9 +8,16 @@
 
 Please refer to following papers to learn about details of this library :
 
-[1] Sang-Hyun Son, Seung-Hyun Yoon, Myung-Soo Kim, Gershon Elber, *Efficient Minimum Distance Computation for Solids of Revolution*, Eurographics & Eurovis (Computer Graphics Forum 2020)
+[1] Sang-Hyun Son, Seung-Hyun Yoon, Myung-Soo Kim, Gershon Elber, *Efficient Minimum Distance Computation for Solids of Revolution*, Eurographics & Eurovis (Computer Graphics Forum 2020) ([Youtube](https://www.youtube.com/watch?v=BoRHXYlMLIg&list=LL2Ppr2hf2VJkzTxKmkx-GzA&index=6&t=0s))
 
 # Videos
+With this library's functions, we can compute distance between tori and detect their collisions much more efficiently than conventional algorithms. The videos below show some  physical simulation results. Please refer to [this talk](https://www.youtube.com/watch?v=BoRHXYlMLIg&list=LL2Ppr2hf2VJkzTxKmkx-GzA&index=6&t=0s) for more videos.
+
+<p align="center">
+  <img src="Image/simA.gif">
+  <img src="Image/simB.gif">
+  <img src="Image/simC.gif">
+</p>
 
 # Explanation
 ## Circle
@@ -27,4 +34,7 @@ Torus can be used to approximate freeform surfaces much precisely than other geo
   <img src="Image/torus_approximation.png">
   <img src="Image/torus_binormal.png">
 </p>
+
+## Gaussmap
+Computing binormals between tori can be accelerated by using their gaussmaps. This library currently offers some limited functions about this gaussmap computation.
 
