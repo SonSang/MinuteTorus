@@ -14,7 +14,7 @@
 #endif
 
 #include "Torus.h"
-
+#include <memory>
 namespace MN {
 	// Torus patch to approximate certain surface [F]
 	// This class contains mapping class for connecting two different parameter spaces : [F]'s & [G]'s.('G' is torus surface)

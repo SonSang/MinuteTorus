@@ -30,7 +30,7 @@ namespace MN {
 				minorRadius * sin(v)
 			};
 		}
-		// Up to 3rd differentiation is allowed
+		// Up to 4th differentiation is allowed
 		inline Vec3 differentiate(Real u, Real v, int uOrder, int vOrder) const {
 			Real
 				tmp;
@@ -56,7 +56,27 @@ namespace MN {
 				tmp = -minorRadius * cos(v);
 				return { tmp * cos(u), tmp * sin(u), -minorRadius * sin(v) };
 			}
-			else 
+			else if (uOrder == 3 && vOrder == 0)
+			{
+				tmp = majorRadius + minorRadius * cos(v);
+				return { tmp * sin(u), -tmp * cos(u), 0 };
+			}
+			else if (uOrder == 2 && vOrder == 1)
+			{
+				tmp = minorRadius * sin(v);
+				return { tmp * cos(u),tmp * sin(u), 0 };
+			}
+			else if (uOrder == 1 && vOrder == 2)
+			{
+				tmp = minorRadius * cos(v);
+				return{ tmp * sin(u),-tmp * cos(u), 0 };
+			}
+			else if (uOrder == 0 && vOrder == 3)
+			{
+				tmp = minorRadius * sin(v);
+				return { tmp * cos(u),tmp * sin(u), tmp };
+			}
+			else
 				throw(std::runtime_error("Invalid torus differentiation order"));
 		}
 		inline Vec3 normal(Real u, Real v) const {
