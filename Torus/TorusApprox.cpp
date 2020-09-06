@@ -995,6 +995,7 @@ namespace MN {
 		axisEnd = torusCenter + torusAxis;
 
 		// @BUGFIX
+		Real cosrad = sub2.dot(sub1);
 		if (cosrad < -1.0)
 			cosrad = -1.0;
 		else if (cosrad > 1.0)
