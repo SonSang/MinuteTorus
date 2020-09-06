@@ -993,10 +993,17 @@ namespace MN {
 
 		Vec3 axisEnd;
 		axisEnd = torusCenter + torusAxis;
+
+		// @BUGFIX
+		if (cosrad < -1.0)
+			cosrad = -1.0;
+		else if (cosrad > 1.0)
+			cosrad = 1.0;
+
 		if (tmpAxis.dot(torusAxis) > 0)
-			ta.transform.rotate(torusCenter, axisEnd, acos(sub2.dot(sub1)));
+			ta.transform.rotate(torusCenter, axisEnd, acos(cosrad));
 		else
-			ta.transform.rotate(torusCenter, axisEnd, -acos(sub2.dot(sub1)));
+			ta.transform.rotate(torusCenter, axisEnd, -acos(cosrad));
 		ta.iTransform = ta.transform.inverse();
 
 
