@@ -294,8 +294,8 @@ namespace MN {
 				max = (t0 > t1 ? t0 : t1);
 			}
 			else {
-				max = (t0 > t1 ? t0 : t1);
-				min = coef[0] + coef[1] * x0 + coef[2] * SQ(x0);
+				min = (t0 > t1 ? t0 : t1);
+				max = coef[0] + coef[1] * x0 + coef[2] * SQ(x0);
 			}
 		}
 	}
