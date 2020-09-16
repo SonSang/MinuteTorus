@@ -66,7 +66,7 @@ namespace MN {
 				return (2 * nCoefs[0] * u) + (nCoefs[2] * v) + nCoefs[3];
 			}
 			inline Real calNv(Real u, Real v) const {
-				return (2 * nCoefs[1] * v) + (nCoefs[2] * u) + nCoefs[5];
+				return (2 * nCoefs[1] * v) + (nCoefs[2] * u) + nCoefs[4];
 			}
 
 			// For given parameter [mn] in [G]'s domain, evaluate matching parameter [uv] in [F]'s domain
