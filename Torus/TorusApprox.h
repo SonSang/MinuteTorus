@@ -68,6 +68,24 @@ namespace MN {
 			inline Real calNv(Real u, Real v) const {
 				return (2 * nCoefs[1] * v) + (nCoefs[2] * u) + nCoefs[4];
 			}
+			inline Real calMuu(Real u, Real v) const {
+				return 2 * mCoefs[0];
+			}
+			inline Real calMuv(Real u, Real v) const {
+				return mCoefs[2];
+			}
+			inline Real calMvv(Real u, Real v) const {
+				return 2 * mCoefs[1];
+			}
+			inline Real calNuu(Real u, Real v) const {
+				return 2 * nCoefs[0];
+			}
+			inline Real calNuv(Real u, Real v) const {
+				return nCoefs[2];
+			}
+			inline Real calNvv(Real u, Real v) const {
+				return 2 * nCoefs[1];
+			}
 
 			// For given parameter [mn] in [G]'s domain, evaluate matching parameter [uv] in [F]'s domain
 			// We use numerical algorithm in here to find them
