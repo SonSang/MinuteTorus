@@ -158,6 +158,9 @@ namespace MN {
 		Vec3 T, Tu, Tv, Tuu, Tuv, Tvv, diff;
 		Real D;
 
+		u = piDomain::regularize(u);
+		v = piDomain::regularize(v);
+
 		T = evaluate(u, v);
 		diff = T - pt;
 		D = sqrt(diff.dot(diff));
