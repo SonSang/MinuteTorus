@@ -83,8 +83,7 @@ namespace MN {
 		D = sqrt(diff.dot(diff));
 
 		Real du, dv, pu, pv;
-		Real addu, addv;
-
+		
 		int cnt = 0;
 		while (true) {
 			cnt++;
@@ -164,8 +163,7 @@ namespace MN {
 		D = sqrt(diff.dot(diff));
 
 		Real du, dv, pu, pv;
-		Real addu, addv;
-
+		
 		int cnt = 0;
 		while (true) {
 			cnt++;
