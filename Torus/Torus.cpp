@@ -186,8 +186,8 @@ namespace MN {
 			kktU = false;
 			kktV = false;
 
-			if (u == uDomain.beg()) {
-				if (v == vDomain.beg()) {
+			if (u == piDomain::regularize(uDomain.beg())) {
+				if (v == piDomain::regularize(vDomain.beg())) {
 					if (du >= 0 && dv >= 0) {
 						return;
 					}
@@ -196,7 +196,7 @@ namespace MN {
 					else if (du < 0 && dv >= 0)
 						kktU = true;
 				}
-				else if (v == vDomain.end()) {
+				else if (v == piDomain::regularize(vDomain.end())) {
 					if (du >= 0 && dv <= 0) {
 						return;
 					}
@@ -210,8 +210,8 @@ namespace MN {
 						kktV = true;
 				}
 			}
-			else if (u == uDomain.end()) {
-				if (v == vDomain.beg()) {
+			else if (u == piDomain::regularize(uDomain.end())) {
+				if (v == piDomain::regularize(vDomain.beg())) {
 					if (du <= 0 && dv >= 0) {
 						return;
 					}
@@ -220,7 +220,7 @@ namespace MN {
 					else if (du > 0 && dv >= 0)
 						kktU = true;
 				}
-				else if (v == vDomain.end()) {
+				else if (v == piDomain::regularize(vDomain.end())) {
 					if (du <= 0 && dv <= 0) {
 						return;
 					}
@@ -235,11 +235,11 @@ namespace MN {
 				}
 			}
 			else {
-				if (v == vDomain.beg()) {
+				if (v == piDomain::regularize(vDomain.beg())) {
 					if (dv >= 0)
 						kktU = true;
 				}
-				else if (v == vDomain.end()) {
+				else if (v == piDomain::regularize(vDomain.end())) {
 					if (dv <= 0)
 						kktU = true;
 				}
