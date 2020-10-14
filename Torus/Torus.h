@@ -180,6 +180,10 @@ namespace MN {
 		}
 
 		// Find parameter [ u0, v0 ] such that [ T(u0, v0) ] is the closest point on torus [ T(u, v) ] to the given point [ pt ]
+		// Use numerical refinement to find [ u0, v0 ], starting at given parameter [ u, v ]
+		virtual void minDistParamRefine(const Vec3& pt, Real& u, Real& v) const;
+
+		// Find parameter [ u0, v0 ] such that [ T(u0, v0) ] is the closest point on torus [ T(u, v) ] to the given point [ pt ]
 		// @return : 
 		// @ 0 = Since [ pt ] is on the axis of this torus and major circle, there is no unique [ u, v ]
 		// @ 1 = Since [ pt ] is on the axis of this torus, there is no unique [ u ]
@@ -191,6 +195,7 @@ namespace MN {
 			if (uresult == 0) {
 				u = 0;
 				vresult = findMinDistParamV(pt, u, v);
+				minDistParamRefine(pt, u, v);
 				if (vresult == 0) {
 					v = 0;
 					return 0;
@@ -199,6 +204,7 @@ namespace MN {
 			}
 			else {
 				vresult = findMinDistParamV(pt, u, v);
+				minDistParamRefine(pt, u, v);
 				if (vresult == 0) {
 					v = 0;
 					return 2;
@@ -253,6 +259,7 @@ namespace MN {
 			}
 			else {
 				vresult0 = findMinDistParamV(pt, minParam.first, minParam.second);
+				minDistParamRefine(pt, minParam.first, minParam.second);
 				vresult1 = findMaxDistParamV(pt, maxParam.first, maxParam.second);
 				if (vresult0 == 0 && vresult1 == 0)
 					throw("It should not happen");
@@ -438,6 +445,10 @@ namespace MN {
 		}
 
 		// Find parameter [ u0, v0 ] such that [ T(u0, v0) ] is the closest point on torus [ T(u, v) ] to the given point [ pt ]
+		// Use numerical refinement to find [ u0, v0 ], starting at given parameter [ u, v ]
+		virtual void minDistParamRefine(const Vec3& pt, Real& u, Real& v) const;
+
+		// Find parameter [ u0, v0 ] such that [ T(u0, v0) ] is the closest point on torus [ T(u, v) ] to the given point [ pt ]
 		// @return : 
 		// @ 0 = Since [ pt ] is on the axis of this torus and major circle, there is no unique [ u, v ]
 		// @ 1 = Since [ pt ] is on the axis of this torus, there is no unique [ u ]
@@ -448,12 +459,14 @@ namespace MN {
 			uresult = findMinDistParamU(pt, u);
 			if (uresult == 0) {
 				vresult = findMinDistParamV(pt, u, v);
+				minDistParamRefine(pt, u, v);
 				if (vresult == 0)
 					return 0;
 				return 1;
 			}
 			else {
 				vresult = findMinDistParamV(pt, u, v);
+				minDistParamRefine(pt, u, v);
 				if (vresult == 0)
 					return 2;
 				return 3;
@@ -499,6 +512,7 @@ namespace MN {
 			}
 			else {
 				vresult0 = findMinDistParamV(pt, minParam.first, minParam.second);
+				minDistParamRefine(pt, minParam.first, minParam.second);
 				vresult1 = findMaxDistParamV(pt, maxParam.first, maxParam.second);
 				if (vresult0 == 0 && vresult1 == 0)
 					throw("It should not happen");
