@@ -78,6 +78,9 @@ namespace MN {
 		Vec3 T, Tu, Tv, Tuu, Tuv, Tvv, diff;
 		Real D;
 
+		u = piDomain::regularize(u);
+		v = piDomain::regularize(v);
+
 		T = evaluate(u, v);
 		diff = T - pt;
 		D = sqrt(diff.dot(diff));
@@ -117,6 +120,8 @@ namespace MN {
 			lubksb(djac, indx, p);
 			u = pu + p[1];
 			v = pv + p[2];
+			u = piDomain::regularize(u);
+			v = piDomain::regularize(v);
 
 			// Test KKT result
 			T = evaluate(u, v);
@@ -128,6 +133,12 @@ namespace MN {
 				D = tmpD;
 				continue;
 			}
+			else if (tmpD <= D + eps) {
+				// Even though there was no improvement, if the direction was correct, just return
+				u = pu;
+				v = pv;
+				return;
+			}
 
 			// GR
 			Real maxAlpha = 1.0;
@@ -138,6 +149,8 @@ namespace MN {
 				Real tmpAlpha = startAlpha;
 				u = pu - tmpAlpha * du;
 				v = pv - tmpAlpha * dv;
+				u = piDomain::regularize(u);
+				v = piDomain::regularize(v);
 
 				T = evaluate(u, v);
 				diff = T - pt;
@@ -273,6 +286,12 @@ namespace MN {
 							D = tmpD;
 							continue;
 						}
+						else if (tmpD <= D + eps) {
+							// Even though there was no improvement, if the direction was correct, just return
+							u = pu;
+							v = pv;
+							return;
+						}
 					}
 				}
 			}
@@ -303,6 +322,12 @@ namespace MN {
 							D = tmpD;
 							continue;
 						}
+						else if (tmpD <= D + eps) {
+							// Even though there was no improvement, if the direction was correct, just return
+							u = pu;
+							v = pv;
+							return;
+						}
 					}
 				}
 			}
@@ -322,34 +347,45 @@ namespace MN {
 					p[i] = -dvec[i];								// Right-hand side of linear equations.
 				ludcmp(djac, indx, &d);								// Solve linear equations using LU decomposition.
 				lubksb(djac, indx, p);
-				u = pu + p[1];
-				v = pv + p[2];
-				u = piDomain::regularize(u);
-				v = piDomain::regularize(v);
 
-				if (!uDomain.has(u)) {
-					if (p[1] > 0)
-						u = piDomain::regularize(uDomain.end());
-					else
-						u = piDomain::regularize(uDomain.beg());
-				}
+				Real deltaU = p[1];
+				Real deltaV = p[2];
+				if (deltaU * du < 0 && deltaV * dv < 0) {
+					u = pu + deltaU;
+					v = pv + deltaV;
+					u = piDomain::regularize(u);
+					v = piDomain::regularize(v);
 
-				if (!vDomain.has(v)) {
-					if (p[2] > 0)
-						v = piDomain::regularize(vDomain.end());
-					else
-						v = piDomain::regularize(vDomain.beg());
-				}
+					if (!uDomain.has(u)) {
+						if (deltaU > 0)
+							u = piDomain::regularize(uDomain.end());
+						else
+							u = piDomain::regularize(uDomain.beg());
+					}
 
-				// Test KKT result
-				T = evaluate(u, v);
-				diff = T - pt;
-				Real tmpD = diff.len();
-				if (tmpD <= D) {
-					if (tmpD > D - eps)
+					if (!vDomain.has(v)) {
+						if (deltaV > 0)
+							v = piDomain::regularize(vDomain.end());
+						else
+							v = piDomain::regularize(vDomain.beg());
+					}
+
+					// Test KKT result
+					T = evaluate(u, v);
+					diff = T - pt;
+					Real tmpD = diff.len();
+					if (tmpD <= D) {
+						if (tmpD > D - eps)
+							return;
+						D = tmpD;
+						continue;
+					}
+					else if (tmpD <= D + eps) {
+						// Even though there was no improvement, if the direction was correct, just return
+						u = pu;
+						v = pv;
 						return;
-					D = tmpD;
-					continue;
+					}
 				}
 			}
 
