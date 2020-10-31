@@ -99,6 +99,9 @@ namespace MN {
 			du = Tu.dot(diff) / D;
 			dv = Tv.dot(diff) / D;
 
+			if (du == 0 && dv == 0)
+				return;
+
 			// KKT
 			pu = u;
 			pv = v;
@@ -116,30 +119,36 @@ namespace MN {
 			int indx[3];
 			for (int i = 1; i <= 2; i++)
 				p[i] = -dvec[i];								// Right-hand side of linear equations.
-			ludcmp(djac, indx, &d);								// Solve linear equations using LU decomposition.
-			lubksb(djac, indx, p);
-			u = pu + p[1];
-			v = pv + p[2];
-			u = piDomain::regularize(u);
-			v = piDomain::regularize(v);
+			try {
+				ludcmp(djac, indx, &d);								// Solve linear equations using LU decomposition.
+				lubksb(djac, indx, p);
+				if (p[1] * du > 0 || p[2] * dv > 0)
+					throw(std::runtime_error("Update direction inconsistent with first derivative"));
+				u = pu + p[1];
+				v = pv + p[2];
+				u = piDomain::regularize(u);
+				v = piDomain::regularize(v);
 
-			// Test KKT result
-			T = evaluate(u, v);
-			diff = T - pt;
-			Real tmpD = diff.len();
-			if (tmpD <= D) {
-				if (tmpD > D - eps)
+				// Test KKT result
+				T = evaluate(u, v);
+				diff = T - pt;
+				Real tmpD = diff.len();
+				if (tmpD <= D) {
+					if (tmpD > D - eps)
+						return;
+					D = tmpD;
+					continue;
+				}
+				else if (tmpD <= D + eps) {
+					// Even though there was no improvement, if the direction was correct, just return
+					u = pu;
+					v = pv;
 					return;
-				D = tmpD;
-				continue;
+				}
 			}
-			else if (tmpD <= D + eps) {
-				// Even though there was no improvement, if the direction was correct, just return
-				u = pu;
-				v = pv;
-				return;
-			}
+			catch (const std::runtime_error& error) {
 
+			}
 			// GR
 			Real maxAlpha = 1.0;
 
@@ -345,12 +354,14 @@ namespace MN {
 				int indx[3];
 				for (int i = 1; i <= 2; i++)
 					p[i] = -dvec[i];								// Right-hand side of linear equations.
-				ludcmp(djac, indx, &d);								// Solve linear equations using LU decomposition.
-				lubksb(djac, indx, p);
+				try {
+					ludcmp(djac, indx, &d);							// Solve linear equations using LU decomposition.
+					lubksb(djac, indx, p);
 
-				Real deltaU = p[1];
-				Real deltaV = p[2];
-				if (deltaU * du < 0 && deltaV * dv < 0) {
+					Real deltaU = p[1];
+					Real deltaV = p[2];
+					if (deltaU * du > 0 || deltaV * dv > 0)
+						throw(std::runtime_error("Update direction inconsistent with the first derivatives"));
 					u = pu + deltaU;
 					v = pv + deltaV;
 					u = piDomain::regularize(u);
@@ -386,6 +397,9 @@ namespace MN {
 						v = pv;
 						return;
 					}
+				}
+				catch(const std::runtime_error& error) {
+
 				}
 			}
 
