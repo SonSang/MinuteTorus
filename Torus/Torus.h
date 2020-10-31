@@ -154,7 +154,7 @@ namespace MN {
 			auto mc = minorCircle();
 			auto utransform = uTransform(u);
 			Vec3 tmppt = utransform.apply(pt);
-			return mc.findMinDistParam(pt, v);
+			return mc.findMinDistParam(tmppt, v);
 		}
 
 		// Find parameter [ v0 ] such that [ T(u, v0) ] is the farthest point on torus [ T(u, v) ] to the given point [ pt ]
@@ -165,7 +165,7 @@ namespace MN {
 			auto mc = minorCircle();
 			auto utransform = uTransform(u);
 			Vec3 tmppt = utransform.apply(pt);
-			return mc.findMaxDistParam(pt, v);
+			return mc.findMaxDistParam(tmppt, v);
 		}
 
 		// Find parameter [ v0, v1 ] such that [ T(u, v0) & T(u, v1) ] are the closest & farthest point on torus [ T(u, v) ] to the given point [ pt ]
@@ -176,7 +176,7 @@ namespace MN {
 			auto mc = minorCircle();
 			auto utransform = uTransform(u);
 			Vec3 tmppt = utransform.apply(pt);
-			return mc.findExtDistParam(pt, minV, maxV);
+			return mc.findExtDistParam(tmppt, minV, maxV);
 		}
 
 		// Find parameter [ u0, v0 ] such that [ T(u0, v0) ] is the closest point on torus [ T(u, v) ] to the given point [ pt ]
@@ -427,7 +427,7 @@ namespace MN {
 			auto mc = minorCircularArc();
 			auto utransform = uTransform(u);
 			Vec3 tmppt = utransform.apply(pt);
-			return mc.findMaxDistParam(pt, v);
+			return mc.findMaxDistParam(tmppt, v);
 		}
 
 		// Find parameter [ v0 & v1 ] such that [ T(u, v0) & T(u, v1) ] is the closest & farthest point on torus [ T(u, v) ] to the given point [ pt ]
@@ -441,7 +441,7 @@ namespace MN {
 			auto mc = minorCircularArc();
 			auto utransform = uTransform(u);
 			Vec3 tmppt = utransform.apply(pt);
-			return mc.findExtDistParam(pt, minV, maxV);
+			return mc.findExtDistParam(tmppt, minV, maxV);
 		}
 
 		// Find parameter [ u0, v0 ] such that [ T(u0, v0) ] is the closest point on torus [ T(u, v) ] to the given point [ pt ]
