@@ -4,7 +4,7 @@
 #define LUDCMP_EPS		1.0e-20
 
 namespace MN {
-	inline static void ludcmp(Real a[3][3], int* idx, Real* d) {
+	inline static bool ludcmp(Real a[3][3], int* idx, Real* d) {
 		int i, imax, j, k;
 		Real big, dum, sum, temp;
 		Real vv[3];
@@ -15,7 +15,8 @@ namespace MN {
 			for (j = 1; j <= 2; j++)
 				if ((temp = fabs(a[i][j])) > big) big = temp;
 			if (big == 0.0)
-				throw(std::runtime_error("Singular matrix in routine ludcmp"));
+				return false;
+				//throw(std::runtime_error("Singular matrix in routine ludcmp"));
 			vv[i] = 1.0 / big;
 		}
 		for (j = 1; j <= 2; j++) {
@@ -52,6 +53,7 @@ namespace MN {
 				for (i = j + 1; i <= 2; i++) a[i][j] *= dum;
 			}
 		}
+		return true;
 	}
 	inline static void lubksb(Real a[3][3], int* idx, Real b[]) {
 		int i, ii = 0, ip, j;
@@ -119,36 +121,34 @@ namespace MN {
 			int indx[3];
 			for (int i = 1; i <= 2; i++)
 				p[i] = -dvec[i];								// Right-hand side of linear equations.
-			try {
-				ludcmp(djac, indx, &d);								// Solve linear equations using LU decomposition.
+			if (ludcmp(djac, indx, &d)) {						// Solve linear equations using LU decomposition.
 				lubksb(djac, indx, p);
-				if (p[1] * du > 0 || p[2] * dv > 0)
-					throw(std::runtime_error("Update direction inconsistent with first derivative"));
-				u = pu + p[1];
-				v = pv + p[2];
-				u = piDomain::regularize(u);
-				v = piDomain::regularize(v);
 
-				// Test KKT result
-				T = evaluate(u, v);
-				diff = T - pt;
-				Real tmpD = diff.len();
-				if (tmpD <= D) {
-					if (tmpD > D - eps)
+				if (p[1] * du <= 0 && p[2] * dv <= 0) {
+					u = pu + p[1];
+					v = pv + p[2];
+					u = piDomain::regularize(u);
+					v = piDomain::regularize(v);
+
+					// Test KKT result
+					T = evaluate(u, v);
+					diff = T - pt;
+					Real tmpD = diff.len();
+					if (tmpD <= D) {
+						if (tmpD > D - eps)
+							return;
+						D = tmpD;
+						continue;
+					}
+					else if (tmpD <= D + eps) {
+						// Even though there was no improvement, if the direction was correct, just return
+						u = pu;
+						v = pv;
 						return;
-					D = tmpD;
-					continue;
-				}
-				else if (tmpD <= D + eps) {
-					// Even though there was no improvement, if the direction was correct, just return
-					u = pu;
-					v = pv;
-					return;
+					}
 				}
 			}
-			catch (const std::runtime_error& error) {
 
-			}
 			// GR
 			Real maxAlpha = 1.0;
 
@@ -354,52 +354,49 @@ namespace MN {
 				int indx[3];
 				for (int i = 1; i <= 2; i++)
 					p[i] = -dvec[i];								// Right-hand side of linear equations.
-				try {
-					ludcmp(djac, indx, &d);							// Solve linear equations using LU decomposition.
+				if (ludcmp(djac, indx, &d)) {						// Solve linear equations using LU decomposition.
 					lubksb(djac, indx, p);
 
 					Real deltaU = p[1];
 					Real deltaV = p[2];
-					if (deltaU * du > 0 || deltaV * dv > 0)
-						throw(std::runtime_error("Update direction inconsistent with the first derivatives"));
-					u = pu + deltaU;
-					v = pv + deltaV;
-					u = piDomain::regularize(u);
-					v = piDomain::regularize(v);
 
-					if (!uDomain.has(u)) {
-						if (deltaU > 0)
-							u = piDomain::regularize(uDomain.end());
-						else
-							u = piDomain::regularize(uDomain.beg());
-					}
+					if (deltaU * du <= 0 && deltaV * dv <= 0) {
+						u = pu + deltaU;
+						v = pv + deltaV;
+						u = piDomain::regularize(u);
+						v = piDomain::regularize(v);
 
-					if (!vDomain.has(v)) {
-						if (deltaV > 0)
-							v = piDomain::regularize(vDomain.end());
-						else
-							v = piDomain::regularize(vDomain.beg());
-					}
+						if (!uDomain.has(u)) {
+							if (deltaU > 0)
+								u = piDomain::regularize(uDomain.end());
+							else
+								u = piDomain::regularize(uDomain.beg());
+						}
 
-					// Test KKT result
-					T = evaluate(u, v);
-					diff = T - pt;
-					Real tmpD = diff.len();
-					if (tmpD <= D) {
-						if (tmpD > D - eps)
+						if (!vDomain.has(v)) {
+							if (deltaV > 0)
+								v = piDomain::regularize(vDomain.end());
+							else
+								v = piDomain::regularize(vDomain.beg());
+						}
+
+						// Test KKT result
+						T = evaluate(u, v);
+						diff = T - pt;
+						Real tmpD = diff.len();
+						if (tmpD <= D) {
+							if (tmpD > D - eps)
+								return;
+							D = tmpD;
+							continue;
+						}
+						else if (tmpD <= D + eps) {
+							// Even though there was no improvement, if the direction was correct, just return
+							u = pu;
+							v = pv;
 							return;
-						D = tmpD;
-						continue;
+						}
 					}
-					else if (tmpD <= D + eps) {
-						// Even though there was no improvement, if the direction was correct, just return
-						u = pu;
-						v = pv;
-						return;
-					}
-				}
-				catch(const std::runtime_error& error) {
-
 				}
 			}
 
