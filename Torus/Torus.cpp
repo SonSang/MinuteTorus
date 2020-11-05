@@ -86,11 +86,13 @@ namespace MN {
 		T = evaluate(u, v);
 		diff = T - pt;
 		D = sqrt(diff.dot(diff));
-
+		
 		Real du, dv, pu, pv;
 		
 		int cnt = 0;
 		while (true) {
+			if (D == 0)
+				return;
 			cnt++;
 			Tu = differentiate(u, v, 1, 0);
 			Tv = differentiate(u, v, 0, 1);
@@ -191,6 +193,8 @@ namespace MN {
 		
 		int cnt = 0;
 		while (true) {
+			if (D == 0)
+				return;
 			cnt++;
 			Tu = differentiate(u, v, 1, 0);
 			Tv = differentiate(u, v, 0, 1);
