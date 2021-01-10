@@ -132,6 +132,7 @@ namespace MN {
 		// Set [ pErrorS ] by given [ samplePoints ]
 		// @multiplier : We can multiply it to computed upper bound for satisfaction
 		void setPositionErrorBySampling(const std::vector<SamplePoint>& samplePoints, Real multiplier);
+		void CreateFromSingleArc(Biarc2d::Circle2d singleArc);
 	};
 }
 

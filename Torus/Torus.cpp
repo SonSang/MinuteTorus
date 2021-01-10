@@ -74,6 +74,9 @@ namespace MN {
 			b[i] = sum / a[i][i];
 		}
 	}
+
+
+
 	void Torus::minDistParamRefine(const Vec3& pt, Real& u, Real& v) const {
 		// Use KKT condition & Simple gradient descent
 		const static Real eps = 1e-11;

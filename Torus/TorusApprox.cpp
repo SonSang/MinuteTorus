@@ -1097,4 +1097,14 @@ namespace MN {
 		if (pErrorS > pErrorT)
 			pErrorS = pErrorT;
 	}
+
+	void TorusApprox::CreateFromSingleArc(Biarc2d::Circle2d singleArc)
+	{
+		patch.uDomain.set(0, PI20);
+		patch.majorRadius = abs(singleArc.center[0]);
+		patch.minorRadius = singleArc.radius;
+		patch.vDomain = singleArc.domain;
+		transform.clear();
+		transform.translate({ 0,0,singleArc.center[1] });
+	}
 }

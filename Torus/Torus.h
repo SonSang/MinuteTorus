@@ -14,6 +14,7 @@
 #endif
 
 #include "../Circle/Circle.h"
+#include "Minute/Freeform/Biarc2d.h"
 
 namespace MN {
 	class Torus {
@@ -118,6 +119,8 @@ namespace MN {
 			return mc;
 		}
 
+
+		
 		/* Parameter */
 		// Find parameter [ u0 ] such that [ MC(u0) ] is the closest point on major circle [ MC(u) ] to the given point [ pt ]
 		// @return : 
@@ -372,7 +375,6 @@ namespace MN {
 			mc.domain = vDomain;
 			return mc;
 		}
-
 		/* Parameter */
 		// Find parameter [ u0 ] such that [ MC(u0) ] is the closest point on major circular arc [ MC(u) ] to the given point [ pt ]
 		// @return : 
