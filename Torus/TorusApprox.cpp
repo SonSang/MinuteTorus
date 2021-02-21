@@ -885,8 +885,9 @@ namespace MN {
 		normal = Fu.cross(Fv);
 		normal.normalize();
 
-		Real k1, k2;	// Principal curvatures
-		Vec3 w1, w2;	// Principal directions
+
+		 Real k1, k2;	// Principal curvatures
+		 Vec3 w1, w2;	// Principal directions
 
 		// Calculate principal curvatures and directions
 		{
@@ -1048,6 +1049,12 @@ namespace MN {
 		ta.mapping.calPositionErrorUpperBound(ta.patch, surface.uDomain, surface.vDomain, N1, N2, N3, N4);
 		ta.pErrorT = (2.0 / 3.0) * ((L1 * L1 * L1) * (M1 + N1) + 3 * (L1 * L1 * L2) * (M2 + N2) + 3 * (L1 * L2 * L2) * (M3 + N3) + (L2 * L2 * L2) * (M4 + N4));
 		ta.pErrorS = ta.pErrorT;
+
+		ta.k1 = k1;
+		ta.k2 = k2;
+		ta.w1 = w1;
+		ta.w2 = w2;
+		
 		return ta;
 	}
 	TorusApprox::Ptr TorusApprox::createPtr(const SurfaceInfo& surface) {

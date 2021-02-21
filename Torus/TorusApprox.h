@@ -119,6 +119,10 @@ namespace MN {
 		Real pErrorS;			// Upper bound of position error to original surface ( Computed by sampling, WEAK but SMALL )
 		Real nError;			// Upper bound of normal error with original surface
 
+		
+		Real k1, k2;	// Principal curvatures
+		Vec3 w1, w2;	// Principal directions
+		
 		static TorusApprox create(const SurfaceInfo& surface);
 		static Ptr createPtr(const SurfaceInfo& surface);
 		void setTransform(const Vec3& center, const Vec3& axis);
